@@ -32,6 +32,7 @@ interface Props {
 export const Form = ({ user }: Props) => {
   const [inputValue, setInputValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>();
+  const trpcUtils = api.useContext();
 
   const inputRef = useCallback((textarea: HTMLTextAreaElement) => {
     updateTextareaSize(textarea);
@@ -45,6 +46,32 @@ export const Form = ({ user }: Props) => {
   const createTweet = api.tweet.create.useMutation({
     onSuccess: (newTweet) => {
       setInputValue("");
+
+      trpcUtils.tweet.infiniteFeed.setInfiniteData({}, (oldData) => {
+        if (!oldData || !oldData.pages[0]) return;
+
+        const newCacheTweet = {
+          ...newTweet,
+          likeCount: 0,
+          likedByMe: false,
+          user: {
+            id: user.id,
+            name: user.name || null,
+            image: user.image || null,
+          },
+        };
+
+        return {
+          ...oldData,
+          pages: [
+            {
+              ...oldData.pages[0],
+              tweets: [newCacheTweet, ...oldData.pages[0].tweets],
+            },
+            ...oldData.pages.slice(1),
+          ],
+        };
+      });
     },
   });
 
