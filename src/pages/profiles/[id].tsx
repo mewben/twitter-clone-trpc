@@ -13,6 +13,8 @@ import { IconHoverEffect } from "~/components/IconHoverEffect";
 import { VscArrowLeft } from "react-icons/vsc";
 import { ProfileImage } from "~/components/ProfileImage";
 import { InfiniteTweetList } from "~/components/InfiniteTweetList";
+import { useSession } from "next-auth/react";
+import { Button } from "~/components/Button";
 
 const ProfilePage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = ({
   id,
@@ -22,6 +24,21 @@ const ProfilePage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = ({
     { userId: id },
     { getNextPageParam: (lastPage) => lastPage.nextCursor }
   );
+  const trpcUtils = api.useContext();
+  const toggleFollow = api.profile.toggleFollow.useMutation({
+    onSuccess: ({ addedFollow }) => {
+      trpcUtils.profile.getById.setData({ id }, (oldData) => {
+        if (!oldData) return;
+
+        const countModifier = addedFollow ? 1 : -1;
+        return {
+          ...oldData,
+          isFollowing: addedFollow,
+          followersCount: oldData.followersCount + countModifier,
+        };
+      });
+    },
+  });
 
   if (!profile || !profile.name) {
     return <ErrorPage statusCode={404} />;
@@ -49,6 +66,12 @@ const ProfilePage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = ({
             {profile.followingsCount} Following
           </div>
         </div>
+        <FollowButton
+          isFollowing={profile.isFollowing}
+          isLoading={toggleFollow.isLoading}
+          userId={id}
+          onClick={() => toggleFollow.mutate({ userId: id })}
+        />
       </header>
       <main>
         <InfiniteTweetList
@@ -60,6 +83,30 @@ const ProfilePage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = ({
         />
       </main>
     </>
+  );
+};
+
+const FollowButton = ({
+  userId,
+  isFollowing,
+  isLoading,
+  onClick,
+}: {
+  userId: string;
+  isFollowing: boolean;
+  isLoading: boolean;
+  onClick: () => void;
+}) => {
+  const { status, data: session } = useSession();
+
+  if (status !== "authenticated" || session.user.id === userId) {
+    return null;
+  }
+
+  return (
+    <Button onClick={onClick} small gray={isFollowing} disabled={isLoading}>
+      {isFollowing ? "Unfollow" : "Follow"}
+    </Button>
   );
 };
 
