@@ -127,7 +127,7 @@ const TweetCard = ({
             {user.name}
           </Link>
           <span className="text-gray-500">-</span>
-          <span className="text-gray-500">{dateTimeFormatter.format()}</span>
+          <span className="text-gray-500">{dateTimeFormatter.format(createdAt)}</span>
         </div>
         <p className="whitespace-pre-wrap">{content}</p>
         <HeartButton
